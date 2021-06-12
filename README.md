@@ -1,5 +1,5 @@
-# Photo Viewer  
-> This plugin is intended to show a picture from an URL into a Photo Viewer with zoom features.
+# Photo Viewer with swipe
+> This plugin is intended to show a list pictures from their url URL into a Photo Viewer with zoom features and swipe right and swipe left to see previous or next picture.
 
 ## How to Install
 
@@ -23,10 +23,13 @@ $ npm install --save @ionic-native/photo-viewer
 
 ### API
 
-#### Show an image
+#### Show a list of images
 
 ```
-PhotoViewer.show('http://my_site.com/my_image.jpg', 'Optional Title');
+PhotoViewer.show([
+    {url: 'http://my_site.com/my_image.jpg', title: 'Optional Title'},
+    {url: 'http://my_site.com/my_image2.jpg'}
+    ]);
 ```
 
 You have to pass as third parameter the following options as object.
@@ -49,7 +52,7 @@ var options = {
     piccasoOptions: { } // If this is not provided, an exception will be triggered
 };
 
-PhotoViewer.show('http://my_site.com/my_image.jpg', 'Optional Title', options);
+PhotoViewer.show([{url: 'http://my_site.com/my_image.jpg', title: 'Optional Title'}], options);
 ```
 
 ### Versions  
