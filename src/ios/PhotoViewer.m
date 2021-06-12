@@ -8,6 +8,7 @@
 @interface PhotoViewer : CDVPlugin <UIDocumentInteractionControllerDelegate, UIScrollViewDelegate> {
     // Member variables go here.
     Boolean isOpen;
+    Boolean init;
     UIScrollView *fullView;
     UIImageView *imageView;
     UIButton *closeBtn;
@@ -15,6 +16,11 @@
     BOOL showCloseBtn;
     BOOL copyToReference;
     NSDictionary *headers;
+    NSInteger currentIndex;
+    CDVInvokedUrlCommand* commandArgs;
+    UIActivityIndicatorView *activityIndicator;
+    CGFloat viewWidth;
+    CGFloat viewHeight;
 }
 
 @property (nonatomic, strong) UIDocumentInteractionController *docInteractionController;
@@ -54,8 +60,74 @@
     return self.viewController;
 }
 
+- (void)initContext:(CDVInvokedUrlCommand*)command{
+    if (!init) {
+        init = true;
+        currentIndex = 0;
+        commandArgs = command;
+        
+        /**
+        Create view
+         */
+        viewWidth = self.viewController.view.bounds.size.width;
+        viewHeight = self.viewController.view.bounds.size.height;
+        
+        //fullView is gloabal, So we can acess any time to remove it
+        fullView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, viewWidth, viewHeight)];
+        [fullView setBackgroundColor:[UIColor blackColor]];
+
+        // For supporting zoom,
+        fullView.minimumZoomScale = 1.0;
+        fullView.maximumZoomScale = 3.0;
+        fullView.clipsToBounds = YES;
+        fullView.delegate = self;
+        
+        /**
+         Create Image view
+         */
+        imageView = [[UIImageView alloc]init];
+        [imageView setContentMode:UIViewContentModeScaleAspectFit];
+        [imageView setBackgroundColor:[UIColor clearColor]];
+        imageView.contentMode = UIViewContentModeScaleAspectFit;
+        
+        [imageView setFrame:CGRectMake(0, 0, viewWidth, viewHeight)];
+
+        [fullView addSubview:imageView];
+        fullView.contentSize = imageView.frame.size;
+
+        [self.viewController.view addSubview:fullView];
+        
+        /**
+         Create activity indicator
+         */
+        activityIndicator = [[UIActivityIndicatorView alloc] initWithFrame:self.viewController.view.frame];
+        [activityIndicator setActivityIndicatorViewStyle:UIActivityIndicatorViewStyleWhiteLarge];
+        [activityIndicator.layer setBackgroundColor:[[UIColor colorWithWhite:0.0 alpha:0.30] CGColor]];
+        CGPoint center = self.viewController.view.center;
+        activityIndicator.center = center;
+        [self.viewController.view addSubview:activityIndicator];
+
+        /**
+         Create close button
+         */
+        closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [closeBtn setTitle:@"✕" forState:UIControlStateNormal];
+        closeBtn.titleLabel.font = [UIFont systemFontOfSize: 32];
+        [closeBtn setTitleColor:[UIColor colorWithRed:255/255.0 green:255/255.0 blue:255/255.0 alpha:0.6] forState:UIControlStateNormal];
+        [closeBtn setFrame:CGRectMake(0, viewHeight - 50, viewWidth, 50)];
+        closeBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        closeBtn.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 0);
+        [closeBtn setBackgroundColor:[UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.6]];
+        [closeBtn addTarget:self action:@selector(closeButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+        [self.viewController.view addSubview:closeBtn];
+        
+    }
+}
+
 - (void)show:(CDVInvokedUrlCommand*)command
 {
+    [self initContext:command];
+
     if (isOpen == false) {
         [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
         [[NSNotificationCenter defaultCenter]
@@ -63,22 +135,37 @@
          name:UIDeviceOrientationDidChangeNotification
          object:[UIDevice currentDevice]];
         isOpen = true;
-        UIActivityIndicatorView *activityIndicator = [[UIActivityIndicatorView alloc] initWithFrame:self.viewController.view.frame];
-        [activityIndicator setActivityIndicatorViewStyle:UIActivityIndicatorViewStyleWhiteLarge];
-        [activityIndicator.layer setBackgroundColor:[[UIColor colorWithWhite:0.0 alpha:0.30] CGColor]];
-        CGPoint center = self.viewController.view.center;
-        activityIndicator.center = center;
-        [self.viewController.view addSubview:activityIndicator];
-
-        [activityIndicator startAnimating];
-
+        
         CDVPluginResult* pluginResult = nil;
-        NSString* url = [command.arguments objectAtIndex:0];
-        NSString* title = [command.arguments objectAtIndex:1];
-        BOOL isShareEnabled = [[command.arguments objectAtIndex:2] boolValue];
-        showCloseBtn = [[command.arguments objectAtIndex:3] boolValue];
-        copyToReference = [[command.arguments objectAtIndex:4] boolValue];
-        headers = [self headers:[command.arguments objectAtIndex:5]];
+        NSArray* data = [command.arguments objectAtIndex:0];
+        NSInteger size = [data count];
+        
+        // loop index if are out of the array
+        if((size) <= currentIndex) {
+            if(size > 1) {
+                currentIndex = 0;
+            } else {
+                return;
+            }
+        }
+        else if(currentIndex < 0) {
+            if(size > 1) {
+                currentIndex = [data count] - 1;
+            } else {
+                return;
+            }
+        } else {
+            [activityIndicator startAnimating];
+        }
+                
+        NSDictionary* jsonObject = [data objectAtIndex:currentIndex];
+        NSString* url = jsonObject[@"url"];
+        NSString* title = [jsonObject objectForKey:@"title"] ? jsonObject[@"title"] : @"";
+        
+        BOOL isShareEnabled = [[command.arguments objectAtIndex:1] boolValue];
+        showCloseBtn = [[command.arguments objectAtIndex:2] boolValue];
+        copyToReference = [[command.arguments objectAtIndex:3] boolValue];
+        headers = [self headers:[command.arguments objectAtIndex:4]];
         
         if ([url rangeOfString:@"http"].location == 0) {
             copyToReference = true;
@@ -99,7 +186,7 @@
                         double delayInSeconds = 0.1;
                         dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC);
                         dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
-                            [activityIndicator stopAnimating];
+                            [self->activityIndicator stopAnimating];
                             [self.docInteractionController presentPreviewAnimated:YES];
                             //[self.docInteractionController presentPreviewAnimated:NO];
 
@@ -107,13 +194,13 @@
                     } else {
                         dispatch_async(dispatch_get_main_queue(), ^{
                             [self showFullScreen:URL andTitle:title];
-                            [activityIndicator stopAnimating];
+                            [self->activityIndicator stopAnimating];
                         });
                     }
 
                 } else {
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        [activityIndicator stopAnimating];
+                        [self->activityIndicator stopAnimating];
                         [self closeImage];
                         // show an alert to the user
                         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Photo viewer error"
@@ -125,6 +212,23 @@
                     });
                 }
             }];
+            
+            UISwipeGestureRecognizer *swipeLeft = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(didSwipe:)];
+                swipeLeft.direction = UISwipeGestureRecognizerDirectionLeft;
+                [self.viewController.view addGestureRecognizer:swipeLeft];
+
+                UISwipeGestureRecognizer *swipeRight = [[UISwipeGestureRecognizer alloc] initWithTarget:self  action:@selector(didSwipe:)];
+                swipeRight.direction = UISwipeGestureRecognizerDirectionRight;
+                [self.viewController.view addGestureRecognizer:swipeRight];
+
+                UISwipeGestureRecognizer *swipeUp = [[UISwipeGestureRecognizer alloc]  initWithTarget:self action:@selector(didSwipe:)];
+                swipeUp.direction = UISwipeGestureRecognizerDirectionUp;
+                [self.viewController.view addGestureRecognizer:swipeUp];
+
+                UISwipeGestureRecognizer *swipeDown = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(didSwipe:)];
+                swipeDown.direction = UISwipeGestureRecognizerDirectionDown;
+                [self.viewController.view addGestureRecognizer:swipeDown];
+            
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
         } else {
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
@@ -196,46 +300,11 @@
 
 //This will create a temporary image view and animate it to fullscreen
 - (void)showFullScreen:(NSURL *)url andTitle:(NSString *)title {
-
-    CGFloat viewWidth = self.viewController.view.bounds.size.width;
-    CGFloat viewHeight = self.viewController.view.bounds.size.height;
-
-    //fullView is gloabal, So we can acess any time to remove it
-    fullView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, viewWidth, viewHeight)];
-    [fullView setBackgroundColor:[UIColor blackColor]];
-
-    // For supporting zoom,
-    fullView.minimumZoomScale = 1.0;
-    fullView.maximumZoomScale = 3.0;
-    fullView.clipsToBounds = YES;
-    fullView.delegate = self;
-
-    imageView = [[UIImageView alloc]init];
-    [imageView setContentMode:UIViewContentModeScaleAspectFit];
     UIImage *image = [UIImage imageWithContentsOfFile:url.path];
-    [imageView setBackgroundColor:[UIColor clearColor]];
     imageView.image = image;
-    imageView.contentMode = UIViewContentModeScaleAspectFit;
-
-    [imageView setFrame:CGRectMake(0, 0, viewWidth, viewHeight)];
-
-    [fullView addSubview:imageView];
-    fullView.contentSize = imageView.frame.size;
-
-    [self.viewController.view addSubview:fullView];
+    
 
     if(showCloseBtn) {
-        closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [closeBtn setTitle:@"✕" forState:UIControlStateNormal];
-        closeBtn.titleLabel.font = [UIFont systemFontOfSize: 32];
-        [closeBtn setTitleColor:[UIColor colorWithRed:255/255.0 green:255/255.0 blue:255/255.0 alpha:0.6] forState:UIControlStateNormal];
-        [closeBtn setFrame:CGRectMake(0, viewHeight - 50, viewWidth, 50)];
-        closeBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-        closeBtn.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 0);
-        [closeBtn setBackgroundColor:[UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.6]];
-        [closeBtn addTarget:self action:@selector(closeButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-        [self.viewController.view addSubview:closeBtn];
-        
         imageLabel = [[UILabel alloc] initWithFrame:CGRectMake(60, viewHeight - 50, viewWidth - 120, 50)];
         imageLabel.numberOfLines = 0;
         imageLabel.lineBreakMode = NSLineBreakByWordWrapping;
@@ -274,6 +343,8 @@
 - (void)closeImage {
     isOpen = false;
     [fullView removeFromSuperview];
+    currentIndex = nil;
+    init = false;
     fullView = nil;
 }
 
@@ -315,6 +386,21 @@
                                          returningResponse:nil
                                                      error:nil];
     return data;
+}
+
+- (void)didSwipe:(UISwipeGestureRecognizer*)swipe{
+
+    if (swipe.direction == UISwipeGestureRecognizerDirectionLeft) {
+        currentIndex++;
+        isOpen = false;
+        [self show:commandArgs];
+    } else if (swipe.direction == UISwipeGestureRecognizerDirectionRight) {
+        currentIndex--;
+        isOpen = false;
+        [self show:commandArgs];
+    } else if (swipe.direction == UISwipeGestureRecognizerDirectionUp) {
+    } else if (swipe.direction == UISwipeGestureRecognizerDirectionDown) {
+    }
 }
 
 @end
