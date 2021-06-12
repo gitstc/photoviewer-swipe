@@ -11,6 +11,9 @@ interface IPhotoViewerOptions {
     };
 }
 declare class PhotoViewer {
-    static show(url: string, title?: string, options?: IPhotoViewerOptions): void;
+    static show(pictures: {
+        url: string;
+        title: string;
+    }[], options?: IPhotoViewerOptions): void;
 }
 //# sourceMappingURL=PhotoViewer.d.ts.map

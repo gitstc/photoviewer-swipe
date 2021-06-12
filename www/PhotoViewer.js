@@ -1,27 +1,33 @@
 "use strict";
 // @ts-ignore
-var exec = require('cordova/exec');
+var exec = require("cordova/exec");
 var PhotoViewer = /** @class */ (function () {
     function PhotoViewer() {
     }
-    PhotoViewer.show = function (url, title, options) {
-        if (title === void 0) { title = ''; }
+    PhotoViewer.show = function (pictures, options) {
         if (options === void 0) { options = {
             share: false,
             closeButton: true,
             copyToReference: false,
-            headers: '',
+            headers: "",
             piccasoOptions: {
                 fit: true,
                 centerInside: true,
-                centerCrop: false
-            }
+                centerCrop: false,
+            },
         }; }
-        if (url && url.trim() == '') {
+        if (!pictures || pictures.length === 0) {
             // Do nothing
             return;
         }
-        var args = [url, title, options.share, options.closeButton, options.copyToReference, options.headers, options.piccasoOptions];
+        var args = [
+            pictures,
+            options.share,
+            options.closeButton,
+            options.copyToReference,
+            options.headers,
+            options.piccasoOptions,
+        ];
         exec(function () { }, function () { }, "PhotoViewer", "show", args);
     };
     return PhotoViewer;
