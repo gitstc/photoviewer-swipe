@@ -12,13 +12,20 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
 import android.util.Base64;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.github.chrisbanes.photoview.OnSingleFlingListener;
+import com.github.chrisbanes.photoview.PhotoView;
+import com.github.chrisbanes.photoview.PhotoViewAttacher;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
@@ -31,12 +38,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import uk.co.senab.photoview.PhotoViewAttacher;
 
 public class PhotoActivity extends Activity {
     private PhotoViewAttacher mAttacher;
 
-    private ImageView photo;
+    private PhotoView photo;
+    private ScaleGestureDetector mScaleGestureDetector;
+    private float mScaleFactor = 1.0f;
 
     private ImageButton closeBtn;
     private ImageButton shareBtn;
@@ -53,6 +61,8 @@ public class PhotoActivity extends Activity {
     private int shareBtnVisibility;
 
     public static JSONArray mArgs = null;
+    public JSONArray pictures = null;
+    public int currentIndex = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,12 +73,44 @@ public class PhotoActivity extends Activity {
         // Load the Views
         findViews();
 
+        photo.setAllowParentInterceptOnEdge(true);
+
+        mAttacher.setAllowParentInterceptOnEdge(true);
+        mAttacher.setOnSingleFlingListener(new OnSwipeTouchListener() {
+             @Override
+             public void onSwipeLeft() {
+                 try {
+                     if(pictures.length() > 1) {
+                         currentIndex++;
+                         showLoadingAndUpdate();
+                         loadCurrentPicture();
+                     }
+                 } catch (JSONException e) {
+                     e.printStackTrace();
+                 }
+             }
+             @Override
+             public void onSwipeRight() {
+                 try {
+                     if(pictures.length() > 1) {
+                         currentIndex--;
+                         showLoadingAndUpdate();
+                         loadCurrentPicture();
+                     }
+                 } catch (JSONException e) {
+                     e.printStackTrace();
+                 }
+             }
+          });
+
         try {
-            this.mImage = mArgs.getString(0);
-            this.mTitle = mArgs.getString(1);
-            this.mShare = mArgs.getBoolean(2);
-            this.mHeaders = parseHeaders(mArgs.optString(5));
-            this.pOptions = mArgs.optJSONObject(6);
+            this.pictures = mArgs.getJSONArray(0);
+// JSONObject image = this.pictures.getJSONObject(this.currentIndex);
+//         this.mImage = image.getString("url");
+//         this.mTitle = "image.getString('title')";
+            this.mShare = mArgs.getBoolean(1);
+            this.mHeaders = parseHeaders(mArgs.optString(4));
+            this.pOptions = mArgs.optJSONObject(5);
 
             if( pOptions == null ) {
                 pOptions = new JSONObject();
@@ -85,13 +127,9 @@ public class PhotoActivity extends Activity {
             shareBtnVisibility = View.INVISIBLE;
         }
         shareBtn.setVisibility(shareBtnVisibility);
-        //Change the activity title
-        if (!mTitle.equals("")) {
-            titleTxt.setText(mTitle);
-        }
 
         try {
-            loadImage();
+            loadCurrentPicture();
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -147,7 +185,7 @@ public class PhotoActivity extends Activity {
         //ProgressBar
         loadingBar = (ProgressBar) findViewById(getApplication().getResources().getIdentifier("loadingBar", "id", getApplication().getPackageName()));
         // Photo Container
-        photo = (ImageView) findViewById(getApplication().getResources().getIdentifier("photoView", "id", getApplication().getPackageName()));
+        photo = (PhotoView) findViewById(getApplication().getResources().getIdentifier("photoView", "id", getApplication().getPackageName()));
         mAttacher = new PhotoViewAttacher(photo);
 
         // Title TextView
@@ -174,6 +212,17 @@ public class PhotoActivity extends Activity {
         mAttacher.update();
     }
 
+    /**
+     * Show Loading when showing the photo. Update the PhotoView Attacher
+     */
+    private void showLoadingAndUpdate() {
+        photo.setVisibility(View.INVISIBLE);
+        loadingBar.setVisibility(View.VISIBLE);
+        shareBtn.setVisibility(shareBtnVisibility);
+
+        mAttacher.update();
+    }
+
     private RequestCreator setOptions(RequestCreator picasso) throws JSONException {
         if(this.pOptions.has("fit") && this.pOptions.optBoolean("fit")) {
             picasso.fit();
@@ -188,6 +237,22 @@ public class PhotoActivity extends Activity {
         }
 
         return picasso;
+    }
+
+    private void loadCurrentPicture() throws JSONException {
+        if(pictures.length() <= this.currentIndex) {
+            this.currentIndex = 0;
+        } else if(this.currentIndex < 0) {
+            this.currentIndex = pictures.length() - 1;
+        }
+        JSONObject image = pictures.getJSONObject(this.currentIndex);
+        mImage = image.getString("url");
+        mTitle = image.has("title") && !image.isNull("title") ? image.getString("title") : "";
+        //Change the activity title
+        if (!mTitle.equals("")) {
+            titleTxt.setText(mTitle);
+        }
+        loadImage();
     }
 
     /**
@@ -279,7 +344,7 @@ public class PhotoActivity extends Activity {
      * @param imageView
      * @return
      */
-    public File getLocalBitmapFileFromView(ImageView imageView) {
+    public File getLocalBitmapFileFromView(PhotoView imageView) {
         Drawable drawable = imageView.getDrawable();
         Bitmap bmp;
 
