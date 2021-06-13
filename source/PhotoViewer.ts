@@ -6,6 +6,7 @@ interface IPhotoViewerOptions {
   closeButton?: boolean;
   copyToReference?: boolean;
   headers?: string;
+  startIndex?: number;
   piccasoOptions?: {
     fit?: boolean;
     centerInside?: boolean;
@@ -14,20 +15,25 @@ interface IPhotoViewerOptions {
 }
 
 class PhotoViewer {
+  static initialOptionState: IPhotoViewerOptions = {
+    share: false,
+    closeButton: true,
+    copyToReference: false,
+    headers: "",
+    startIndex: 0,
+    piccasoOptions: {
+      fit: true,
+      centerInside: true,
+      centerCrop: false,
+    },
+  };
+
   public static show(
     pictures: { url: string; title: string }[],
-    options: IPhotoViewerOptions = {
-      share: false,
-      closeButton: true,
-      copyToReference: false,
-      headers: "",
-      piccasoOptions: {
-        fit: true,
-        centerInside: true,
-        centerCrop: false,
-      },
-    }
+    options: IPhotoViewerOptions = PhotoViewer.initialOptionState
   ) {
+    options = { ...this.initialOptionState, ...options };
+
     if (!pictures || pictures.length === 0) {
       // Do nothing
       return;
@@ -35,6 +41,7 @@ class PhotoViewer {
 
     var args = [
       pictures,
+      options.startIndex,
       options.share,
       options.closeButton,
       options.copyToReference,

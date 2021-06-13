@@ -5,12 +5,12 @@
 
 Cordova:
 ```bash
-cordova plugin add com-sarriaroman-photoviewer
+cordova plugin add https://github.com/vlafranca/photoviewer-swipe
 ```
 
 Ionic 2:
 ```bash
-$ ionic cordova plugin add com-sarriaroman-photoviewer
+$ ionic cordova plugin add https://github.com/vlafranca/photoviewer-swipe
 $ npm install --save @ionic-native/photo-viewer
 ```
 
@@ -36,6 +36,7 @@ You have to pass as third parameter the following options as object.
 
 Options:
 * share: boolean - Option is used to hide and show the share option.
+* startIndex: number - THe index of the image to show in the list.
 * closeBtn: boolean - Option for close button visibility when share false [ONLY FOR iOS]
 * copyToReference: boolean - If you need to copy image to reference before show then set it true [ONLY FOR iOS]
 * headers: string - HTTP Headers [MUST BE PROVIDED]
@@ -45,6 +46,7 @@ Options:
 
 ```
 var options = {
+    startIndex: 3, // default is 0
     share: true, // default is false
     closeButton: false, // default is true
     copyToReference: true, // default is false
@@ -52,7 +54,7 @@ var options = {
     piccasoOptions: { } // If this is not provided, an exception will be triggered
 };
 
-PhotoViewer.show([{url: 'http://my_site.com/my_image.jpg', title: 'Optional Title'}], options);
+PhotoViewer.show([{url: 'http://my_site.com/my_image.jpg', title: 'Optional Title'}] as any, options as any);
 ```
 
 ### Versions  

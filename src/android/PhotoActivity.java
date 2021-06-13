@@ -105,12 +105,10 @@ public class PhotoActivity extends Activity {
 
         try {
             this.pictures = mArgs.getJSONArray(0);
-// JSONObject image = this.pictures.getJSONObject(this.currentIndex);
-//         this.mImage = image.getString("url");
-//         this.mTitle = "image.getString('title')";
-            this.mShare = mArgs.getBoolean(1);
-            this.mHeaders = parseHeaders(mArgs.optString(4));
-            this.pOptions = mArgs.optJSONObject(5);
+            this.currentIndex = mArgs.getInt(1);
+            this.mShare = mArgs.getBoolean(2);
+            this.mHeaders = parseHeaders(mArgs.optString(5));
+            this.pOptions = mArgs.optJSONObject(6);
 
             if( pOptions == null ) {
                 pOptions = new JSONObject();

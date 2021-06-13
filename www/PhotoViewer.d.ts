@@ -4,6 +4,7 @@ interface IPhotoViewerOptions {
     closeButton?: boolean;
     copyToReference?: boolean;
     headers?: string;
+    startIndex?: number;
     piccasoOptions?: {
         fit?: boolean;
         centerInside?: boolean;
@@ -11,6 +12,7 @@ interface IPhotoViewerOptions {
     };
 }
 declare class PhotoViewer {
+    static initialOptionState: IPhotoViewerOptions;
     static show(pictures: {
         url: string;
         title: string;
