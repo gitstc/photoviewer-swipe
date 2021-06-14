@@ -63,7 +63,7 @@
 - (void)initContext:(CDVInvokedUrlCommand*)command{
     if (!init) {
         init = true;
-        currentIndex = 0;
+        currentIndex = [[command.arguments objectAtIndex:1] intValue];
         commandArgs = command;
         
         /**
@@ -139,7 +139,6 @@
         CDVPluginResult* pluginResult = nil;
         NSArray* data = [command.arguments objectAtIndex:0];
         NSInteger size = [data count];
-        
         // loop index if are out of the array
         if((size) <= currentIndex) {
             if(size > 1) {
@@ -162,10 +161,10 @@
         NSString* url = jsonObject[@"url"];
         NSString* title = [jsonObject objectForKey:@"title"] ? jsonObject[@"title"] : @"";
         
-        BOOL isShareEnabled = [[command.arguments objectAtIndex:1] boolValue];
-        showCloseBtn = [[command.arguments objectAtIndex:2] boolValue];
-        copyToReference = [[command.arguments objectAtIndex:3] boolValue];
-        headers = [self headers:[command.arguments objectAtIndex:4]];
+        BOOL isShareEnabled = [[command.arguments objectAtIndex:2] boolValue];
+        showCloseBtn = [[command.arguments objectAtIndex:3] boolValue];
+        copyToReference = [[command.arguments objectAtIndex:4] boolValue];
+        headers = [self headers:[command.arguments objectAtIndex:5]];
         
         if ([url rangeOfString:@"http"].location == 0) {
             copyToReference = true;
