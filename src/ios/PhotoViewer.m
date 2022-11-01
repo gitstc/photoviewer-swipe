@@ -388,6 +388,7 @@
 }
 
 - (void)didSwipe:(UISwipeGestureRecognizer*)swipe{
+    //Fix issue when swiping while the viewer is closed
     if(isOpen == false) {
         return;
     }
