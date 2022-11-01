@@ -388,6 +388,9 @@
 }
 
 - (void)didSwipe:(UISwipeGestureRecognizer*)swipe{
+    if(isOpen == false) {
+        return;
+    }
 
     if (swipe.direction == UISwipeGestureRecognizerDirectionLeft) {
         currentIndex++;
